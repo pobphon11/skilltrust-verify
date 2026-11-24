@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillTrust Verify</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08090b; --bg2:#0d0f12; --panel:#111418; --panel2:#161a1f; --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
+  --text:#e9ecef; --muted:#8a919b; --dim:#5b616a;
+  --accent:#c6ff3d; --accent-ink:#0b0d06;
+  --valid:#39d98a; --expired:#f5b544; --suspended:#8fa3ff; --revoked:#ff5f5f;
+  --r:14px; --mono:"JetBrains Mono",ui-monospace,monospace; --sans:"Anuphan","Space Grotesk",system-ui,sans-serif; --display:"Space Grotesk","Anuphan",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(900px 500px at 85% -10%,rgba(198,255,61,.07),transparent 60%),
+             radial-gradient(700px 500px at -10% 110%,rgba(143,163,255,.06),transparent 60%),
+             radial-gradient(rgba(255,255,255,.045) 1px,transparent 1px) 0 0/22px 22px}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-size:.86em;word-break:break-all}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+
+/* ─── Shell ─── */
+.shell{position:relative;z-index:1;display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+aside{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;border-right:1px solid var(--line);background:rgba(10,11,13,.72);backdrop-filter:blur(14px);padding:22px 14px}
+.brand{display:flex;align-items:center;gap:11px;padding:0 8px 22px}
+.mark{width:34px;height:34px;border-radius:10px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-family:var(--display);font-weight:700;font-size:15px;box-shadow:0 0 24px rgba(198,255,61,.35)}
+.brand b{display:block;font-family:var(--display);font-size:15px;letter-spacing:.02em}
+.brand small{display:block;color:var(--muted);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase}
+nav{display:flex;flex-direction:column;gap:2px}
+nav a{display:flex;align-items:center;gap:12px;padding:10px 10px;border-radius:10px;text-decoration:none;color:var(--muted);font-size:14.5px;transition:.15s}
+nav a .n{font-family:var(--mono);font-size:11px;color:var(--dim);width:20px}
+nav a:hover{color:var(--text);background:rgba(255,255,255,.03)}
+nav a.on{color:var(--text);background:var(--panel2);box-shadow:inset 2px 0 0 var(--accent)}
+nav a.on .n{color:var(--accent)}
+nav a .lock{margin-left:auto;font-size:11px;color:var(--dim)}
+.navsep{height:1px;background:var(--line);margin:12px 8px}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.net{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);padding:0 8px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
+.dot.live{background:var(--valid);box-shadow:0 0 0 0 rgba(57,217,138,.6);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 7px rgba(57,217,138,0)}100%{box-shadow:0 0 0 0 rgba(57,217,138,0)}}
+.walletbtn{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line2);background:var(--panel);cursor:pointer;text-align:left}
+.walletbtn:hover{border-color:rgba(198,255,61,.45)}
+.walletbtn .av{width:26px;height:26px;border-radius:8px;background:conic-gradient(from 90deg,#c6ff3d,#39d98a,#8fa3ff,#c6ff3d);flex:none}
+.walletbtn b{display:block;font-size:13px} .walletbtn small{display:block;font-size:11.5px;color:var(--muted)}
+.credit{font-size:11.5px;color:var(--dim);padding:2px 8px 0;line-height:1.5}
+.credit b{color:var(--muted);font-weight:500}
+
+main{min-width:0;padding:34px 44px 80px}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
+.crumb{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.crumb b{color:var(--accent);font-weight:600}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:1px 6px;color:var(--muted)}
+h1{font-family:var(--display);font-weight:500;font-size:34px;letter-spacing:-.02em;margin:0 0 6px;line-height:1.15}
+h1 em{font-style:normal;color:var(--accent)}
+.lede{color:var(--muted);margin:0 0 28px;max-width:640px}
+h3{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 14px;font-family:var(--display)}
+.view{display:none;animation:in .35s ease}
+.view.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ─── Primitives ─── */
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));border:1px solid var(--line);border-radius:var(--r);padding:22px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:start}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.stack{display:flex;flex-direction:column;gap:14px}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--muted)}
+.input,select.input,textarea.input{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:11px 13px;outline:none;transition:.15s;font-size:15px}
+.input:focus{border-color:rgba(198,255,61,.6);box-shadow:0 0 0 3px rgba(198,255,61,.1)}
+textarea.input{min-height:150px;resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:10px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;font-size:14.5px;font-weight:500;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:rgba(255,255,255,.25)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.btn.primary:hover{filter:brightness(1.06);box-shadow:0 0 22px rgba(198,255,61,.28)}
+.btn.ghost{background:transparent}
+.btn.warn{border-color:rgba(143,163,255,.4);color:var(--suspended)}
+.btn.danger{border-color:rgba(255,95,95,.4);color:var(--revoked)}
+.btn.ok{border-color:rgba(57,217,138,.4);color:var(--valid)}
+.btn.arm{background:var(--revoked);color:#180606;border-color:transparent}
+.btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.seg{display:inline-flex;background:var(--bg2);border:1px solid var(--line2);border-radius:11px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;padding:8px 14px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:13.5px}
+.seg button.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.04em;border:1px solid currentColor;line-height:1.4}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.c-valid{color:var(--valid)} .c-expired{color:var(--expired)} .c-suspended{color:var(--suspended)} .c-revoked{color:var(--revoked)} .c-none{color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{border:1px dashed var(--line2);background:transparent;color:var(--muted);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
+.chips button:hover{color:var(--text);border-style:solid}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:9px 14px;font-size:13.5px}
+.kv dt{color:var(--dim)} .kv dd{margin:0;word-break:break-all}
+.note{font-size:12.5px;color:var(--muted);border-left:2px solid var(--line2);padding:2px 0 2px 12px}
+.empty{border:1px dashed var(--line2);border-radius:var(--r);padding:34px;text-align:center;color:var(--muted)}
+
+/* ─── Verify hero ─── */
+.search{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:8px 8px 8px 18px;transition:.2s}
+.search:focus-within{border-color:rgba(198,255,61,.55);box-shadow:0 0 0 4px rgba(198,255,61,.08),0 20px 60px -20px rgba(198,255,61,.25)}
+.search input{flex:1;min-width:0;background:transparent;border:0;outline:none;font-size:18px;font-family:var(--mono);padding:10px 0}
+.search .icon{color:var(--dim);font-family:var(--mono)}
+.drop{margin-top:14px;border:1px dashed var(--line2);border-radius:16px;padding:22px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:.2s;color:var(--muted)}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--text);background:rgba(198,255,61,.04)}
+.drop .ico{width:44px;height:44px;border-radius:12px;border:1px solid var(--line2);display:grid;place-items:center;font-family:var(--mono);color:var(--accent);flex:none}
+#reader{max-width:340px;margin-top:14px;border-radius:12px;overflow:hidden}
+
+/* pipeline */
+.pipe{list-style:none;margin:26px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.pipe li{border:1px solid var(--line);border-radius:12px;padding:12px 12px 11px;font-size:12.5px;color:var(--dim);position:relative;overflow:hidden;transition:.25s;background:rgba(255,255,255,.01)}
+.pipe li b{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;margin-bottom:3px}
+.pipe li.active{color:var(--text);border-color:rgba(198,255,61,.5)}
+.pipe li.active::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:40%;background:var(--accent);animation:scan 0.9s linear infinite}
+@keyframes scan{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+.pipe li.done{color:var(--text);border-color:rgba(57,217,138,.35)} .pipe li.done b{color:var(--valid)}
+.pipe li.warn{color:var(--text);border-color:rgba(245,181,68,.45)} .pipe li.warn b{color:var(--expired)}
+.pipe li.fail{color:var(--text);border-color:rgba(255,95,95,.45)} .pipe li.fail b{color:var(--revoked)}
+
+/* verdict */
+.verdict{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.vbanner{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;border-radius:var(--r);border:1px solid;flex-wrap:wrap}
+.vbanner .word{font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:.04em}
+.vbanner p{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.v-valid{border-color:rgba(57,217,138,.4);background:linear-gradient(90deg,rgba(57,217,138,.1),transparent)} .v-valid .word{color:var(--valid)}
+.v-expired{border-color:rgba(245,181,68,.4);background:linear-gradient(90deg,rgba(245,181,68,.1),transparent)} .v-expired .word{color:var(--expired)}
+.v-suspended{border-color:rgba(143,163,255,.4);background:linear-gradient(90deg,rgba(143,163,255,.1),transparent)} .v-suspended .word{color:var(--suspended)}
+.v-revoked,.v-none,.v-tampered{border-color:rgba(255,95,95,.4);background:linear-gradient(90deg,rgba(255,95,95,.1),transparent)} .v-revoked .word,.v-none .word,.v-tampered .word{color:var(--revoked)}
+
+/* flip card */
+.flip{perspective:1400px;cursor:pointer}
+.flip .inner{position:relative;transition:transform .7s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d;aspect-ratio:16/10}
+.flip.flipped .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px;overflow:hidden;border:1px solid var(--line2)}
+.face.back{transform:rotateY(180deg);background:var(--panel);padding:18px;display:grid;grid-template-columns:1fr auto;gap:14px}
+.face img{width:100%;height:100%;object-fit:cover;display:block}
+.face canvas{width:100%;height:100%;display:block}
+.flip-hint{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:8px;text-align:center;letter-spacing:.08em}
+.back .qrbox{background:#fff;border-radius:10px;padding:8px;align-self:start}
+.back .qrbox img,.back .qrbox canvas{display:block;width:104px!important;height:104px!important}
+.back .meta{font-size:12px;display:flex;flex-direction:column;gap:7px;min-width:0}
+.back .meta div span{display:block;color:var(--dim);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-family:var(--mono)}
+
+/* timeline */
+.tl{list-style:none;margin:0;padding:0 0 0 6px}
+.tl li{position:relative;padding:0 0 18px 24px;border-left:1px solid var(--line2);font-size:13.5px}
+.tl li:last-child{border-left-color:transparent;padding-bottom:0}
+.tl li::before{content:"";position:absolute;left:-6px;top:3px;width:11px;height:11px;border-radius:50%;background:var(--bg);border:2px solid var(--tc,var(--accent))}
+.tl li b{display:block}
+.tl li small{color:var(--dim);font-family:var(--mono);font-size:11px}
+
+/* stats + tiles */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.stat{border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;background:rgba(255,255,255,.015)}
+.stat b{display:block;font-family:var(--display);font-size:30px;font-weight:500;line-height:1.1}
+.stat span{font-size:12px;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
+.tile .actions{display:flex;gap:8px;margin-top:10px}
+.tile .actions .btn{padding:8px 12px;font-size:13px;flex:1}
+
+/* chain card (front face without file) */
+.chaincard{position:absolute;inset:0;padding:20px;display:flex;flex-direction:column;justify-content:space-between;background:
+  radial-gradient(400px 220px at 100% 0,rgba(198,255,61,.12),transparent 60%),linear-gradient(160deg,#15191f,#0c0e11)}
+.chaincard .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.chaincard .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--dim)}
+.chaincard h4{margin:4px 0 0;font-family:var(--display);font-weight:500;font-size:20px;line-height:1.2}
+.chaincard .fp{position:absolute;right:-34px;bottom:-46px;width:52%;opacity:.55;pointer-events:none}
+.chaincard .top,.chaincard .bottom{position:relative;z-index:1}
+.chaincard .bottom{display:flex;justify-content:space-between;align-items:end;gap:10px;font-size:12px}
+
+/* issue preview */
+.preview{position:sticky;top:24px}
+.preview canvas{width:100%;height:auto;border-radius:14px;border:1px solid var(--line2);display:block;box-shadow:0 30px 80px -30px rgba(0,0,0,.8)}
+.hashline{margin-top:10px;font-family:var(--mono);font-size:11.5px;color:var(--dim);word-break:break-all}
+.progress{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.progress div{font-size:13px;color:var(--dim);display:flex;gap:8px;align-items:center}
+.progress div.done{color:var(--text)} .progress div.done::before{content:"✓";color:var(--valid);font-family:var(--mono)}
+.progress div.run{color:var(--text)} .progress div.run::before{content:"…";color:var(--accent);font-family:var(--mono)}
+.progress div.wait::before{content:"·";font-family:var(--mono)}
+.progress div.err{color:var(--revoked)} .progress div.err::before{content:"✕";font-family:var(--mono)}
+
+/* courses */
+.courses{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.course{border:1px solid var(--line);border-radius:var(--r);padding:16px;background:rgba(255,255,255,.015);display:flex;flex-direction:column;gap:8px}
+.course .cat{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+.course h4{margin:0;font-family:var(--display);font-weight:500;font-size:17px}
+.course .row{justify-content:space-between}
+.course.off{opacity:.55}
+
+/* toast */
+#toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:10px;z-index:50;max-width:min(420px,calc(100vw - 40px))}
+.toast{background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;font-size:13.5px;box-shadow:0 20px 50px -10px rgba(0,0,0,.7);animation:in .25s ease;border-left:3px solid var(--accent)}
+.toast.err{border-left-color:var(--revoked)} .toast.ok{border-left-color:var(--valid)}
+.toast a{color:var(--accent)}
+
+@media (max-width:1100px){.grid2,.verdict{grid-template-columns:1fr}.preview{position:static}}
+@media (max-width:820px){
+  .shell{grid-template-columns:1fr}
+  aside{position:fixed;bottom:0;top:auto;left:0;right:0;height:auto;flex-direction:row;align-items:center;padding:8px 10px;border-right:0;border-top:1px solid var(--line);z-index:20;gap:8px}
+  .brand,.navsep,.credit,.net{display:none}
+  nav{flex-direction:row;overflow-x:auto;flex:1;gap:2px}
+  nav a{padding:8px 10px;white-space:nowrap;font-size:13px} nav a .n{display:none} nav a.on{box-shadow:inset 0 -2px 0 var(--accent)}
+  .side-foot{margin:0;flex:none} .walletbtn{padding:8px} .walletbtn div{display:none}
+  main{padding:22px 16px 110px} h1{font-size:26px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kv{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <div class="brand"><div class="mark">ST</div><div><b>SkillTrust Verify</b><small>Credential Registry</small></div></div>
+    <nav id="nav">
+      <a href="#verify" data-v="verify"><span class="n">01</span>ตรวจสอบใบรับรอง</a>
+      <a href="#wallet" data-v="wallet"><span class="n">02</span>ใบรับรองของฉัน</a>
+      <div class="navsep"></div>
+      <a href="#issue" data-v="issue"><span class="n">03</span>ออกใบรับรอง<span class="lock" data-role="issuer">ISSUER</span></a>
+      <a href="#manage" data-v="manage"><span class="n">04</span>สถานะ / เพิกถอน<span class="lock" data-role="issuer">ISSUER</span></a>
+      <a href="#courses" data-v="courses"><span class="n">05</span>หลักสูตร<span class="lock" data-role="admin">ADMIN</span></a>
+      <a href="#access" data-v="access"><span class="n">06</span>สิทธิ์ &amp; ระบบ<span class="lock" data-role="admin">ADMIN</span></a>
+    </nav>
+    <div class="side-foot">
+      <div class="net"><span class="dot" id="netDot"></span><span id="netText">กำลังเชื่อมต่อ Sepolia…</span></div>
+      <button class="walletbtn" id="walletBtn"><span class="av"></span><div><b id="walletLabel">Connect Wallet</b><small id="walletRole">MetaMask · Sepolia</small></div></button>
+      <div class="credit">จัดทำโดย <b>พบพร จิตโสภา</b><br>รหัสนักศึกษา <b>66016519</b></div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topline"><div class="crumb">SKILLTRUST / <b id="crumb">VERIFY</b></div><div class="muted" style="font-size:12.5px">กด <span class="kbd">/</span> เพื่อค้นหา</div></div>
+
+    <!-- 01 VERIFY -->
+    <section class="view" id="v-verify">
+      <h1>ตรวจสอบใบรับรอง <em>ใน 3 วินาที</em></h1>
+      <p class="lede">ใส่รหัสใบรับรอง สแกน QR หรือลากไฟล์ใบรับรองมาวาง ระบบจะเทียบกับ Smart Contract บน Ethereum ไม่ต้องเชื่อม Wallet</p>
+      <div class="search">
+        <span class="icon">ID</span>
+        <input id="vInput" placeholder="STV-2611-XXXXX หรือวางลิงก์ตรวจสอบ" autocomplete="off" spellcheck="false">
+        <button class="btn ghost" id="scanBtn" title="สแกน QR">สแกน QR</button>
+        <button class="btn primary" id="verifyBtn">ตรวจสอบ</button>
+      </div>
+      <label class="drop" id="drop">
+        <span class="ico">⇣</span>
+        <span><b style="color:var(--text)">ลากไฟล์ใบรับรองมาวางที่นี่</b><br><span style="font-size:13px">ระบบคำนวณ hash ของไฟล์แล้วค้นหาบน blockchain ถ้าไฟล์ถูกแก้แม้แต่จุดเดียวจะตรวจไม่ผ่าน (ไฟล์ไม่ถูกอัปโหลดไปไหน)</span></span>
+        <input type="file" id="dropFile" hidden>
+      </label>
+      <div id="reader"></div>
+      <ol class="pipe" id="pipe" hidden></ol>
+      <div id="verdict"></div>
+    </section>
+
+    <!-- 02 WALLET -->
+    <section class="view" id="v-wallet">
+      <h1>ใบรับรองของฉัน</h1>
+      <p class="lede">ใบรับรองทั้งหมดที่ผูกกับ Wallet ที่เชื่อมต่ออยู่ คลิกการ์ดเพื่อพลิกดูข้อมูลบน blockchain และคัดลอกลิงก์ส่งให้ผู้ว่าจ้างได้ทันที</p>
+      <div id="walletBody"></div>
+    </section>
+
+    <!-- 03 ISSUE -->
+    <section class="view" id="v-issue">
+      <h1>ออกใบรับรอง</h1>
+      <p class="lede">ระบบสร้างไฟล์ใบรับรอง (PNG) แล้วบันทึกเฉพาะ hash ของไฟล์บน blockchain ชื่อผู้รับจะอยู่ในไฟล์เท่านั้น ไม่ขึ้น Public Blockchain</p>
+      <div class="row" style="margin-bottom:18px"><div class="seg" id="issueMode"><button data-m="single" class="on">ทีละใบ</button><button data-m="batch">หลายใบ (Batch)</button></div></div>
+
+      <div class="grid2" id="issueSingle">
+        <div class="panel stack">
+          <label class="f">รหัสใบรับรอง<div class="row"><input class="input mono" id="iId" style="flex:1"><button class="btn ghost" id="iNewId" type="button">สุ่ม</button></div></label>
+          <label class="f">หลักสูตร<select class="input" id="iCourse"></select></label>
+          <label class="f">ชื่อ-สกุลผู้รับ (อยู่ในไฟล์เท่านั้น)<input class="input" id="iName" placeholder="ชื่อ นามสกุล"></label>
+          <label class="f">Wallet ผู้รับ<input class="input mono" id="iWallet" placeholder="0x…"></label>
+          <div class="f" style="font-size:12.5px;color:var(--muted)">ระดับผลการอบรม
+            <div class="seg" id="iGrade"><button data-g="0" class="on">Pass</button><button data-g="1">Merit</button><button data-g="2">Distinction</button></div></div>
+          <div class="f" style="font-size:12.5px;color:var(--muted)">วันหมดอายุ
+            <div class="seg" id="iExpMode"><button data-e="course" class="on">ตามหลักสูตร</button><button data-e="custom">กำหนดเอง</button></div>
+            <input class="input" type="datetime-local" id="iExpAt" hidden>
+            <span id="iExpHint" class="dim" style="font-size:12px"></span></div>
+          <button class="btn primary" id="iIssue">ออกใบรับรองและบันทึกบน Blockchain</button>
+          <div class="progress" id="iProg"></div>
+        </div>
+        <div class="preview">
+          <canvas id="iCanvas" width="1600" height="1000"></canvas>
+          <div class="hashline" id="iHash">ตัวอย่างใบรับรอง · อัปเดตตามข้อมูลที่กรอก</div>
+          <div class="row" style="margin-top:12px" id="iDone" hidden><a class="btn primary" id="iDownload" download>ดาวน์โหลดใบรับรอง (PNG)</a><button class="btn ghost" id="iVerifyNow">เปิดหน้าตรวจสอบ</button></div>
+        </div>
+      </div>
+
+      <div class="grid2" id="issueBatch" hidden>
+        <div class="panel stack">
+          <label class="f">หลักสูตร<select class="input" id="bCourse"></select></label>
+          <div class="f" style="font-size:12.5px;color:var(--muted)">ระดับผลการอบรมใส่ในคอลัมน์ที่ 3 (Pass / Merit / Distinction)</div>
+          <label class="f">รายชื่อ (ชื่อ, wallet, ระดับ) บรรทัดละ 1 คน สูงสุด 20 คน
+            <textarea class="input" id="bCsv" placeholder="สมชาย ใจดี, 0x1234…, Merit&#10;สุดา รักเรียน, 0xabcd…, Pass"></textarea></label>
+          <div class="row"><button class="btn" id="bParse">ตรวจรายชื่อ</button><button class="btn primary" id="bIssue" disabled>ออกทั้งหมด</button></div>
+          <div class="progress" id="bProg"></div>
+        </div>
+        <div class="panel">
+          <h3>รายการที่จะออก</h3>
+          <div id="bTable" class="muted" style="font-size:13.5px">วางรายชื่อแล้วกด "ตรวจรายชื่อ"</div>
+          <div class="row" style="margin-top:14px" id="bDone" hidden><button class="btn primary" id="bZip">ดาวน์โหลดทั้งหมด (.zip)</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 MANAGE -->
+    <section class="view" id="v-manage">
+      <h1>สถานะ / เพิกถอน</h1>
+      <p class="lede">ระงับชั่วคราวเมื่อต้องตรวจสอบ คืนสถานะได้ภายหลัง หรือเพิกถอนถาวรเมื่อออกผิดพลาดหรือทุจริต ทุกการเปลี่ยนแปลงถูกบันทึกเป็นประวัติบน blockchain</p>
+      <div class="search" style="max-width:720px"><span class="icon">ID</span><input id="mInput" placeholder="รหัสใบรับรอง" spellcheck="false"><button class="btn primary" id="mLoad">โหลด</button></div>
+      <div id="mBody" style="margin-top:22px"></div>
+    </section>
+
+    <!-- 05 COURSES -->
+    <section class="view" id="v-courses">
+      <h1>หลักสูตร</h1>
+      <p class="lede">ผู้ดูแลระบบลงทะเบียนหลักสูตร กำหนดหมวด จำนวนชั่วโมง และอายุของใบรับรอง รวมถึงเปิด/ปิดการออกใบรับรองของแต่ละหลักสูตร</p>
+      <div class="grid2">
+        <div class="panel stack">
+          <h3>ลงทะเบียนหลักสูตรใหม่</h3>
+          <div class="row"><label class="f" style="flex:1">รหัสหลักสูตร<input class="input mono" id="cCode" placeholder="CLD-310"></label>
+            <label class="f" style="flex:1">หมวด<select class="input" id="cCat"><option>AI</option><option>Cybersecurity</option><option>Cloud Computing</option><option>Data Analytics</option><option>Other</option></select></label></div>
+          <label class="f">ชื่อหลักสูตร<input class="input" id="cName" placeholder="Cloud Solutions Architect"></label>
+          <div class="row"><label class="f" style="flex:1">จำนวนชั่วโมง<input class="input" type="number" min="1" id="cHours" value="24"></label>
+            <label class="f" style="flex:1">อายุใบรับรอง (วัน, 0 = ไม่หมดอายุ)<input class="input" type="number" min="0" id="cDays" value="730"></label></div>
+          <button class="btn primary" id="cCreate">ลงทะเบียนหลักสูตร</button>
+        </div>
+        <div><h3>หลักสูตรทั้งหมด</h3><div class="courses" id="courseList"><div class="empty">กำลังโหลด…</div></div></div>
+      </div>
+    </section>
+
+    <!-- 06 ACCESS -->
+    <section class="view" id="v-access">
+      <h1>สิทธิ์ &amp; ระบบ</h1>
+      <p class="lede">มี 3 บทบาท ได้แก่ Admin (จัดการหลักสูตรและสิทธิ์), Issuer (ออก/ระงับ/เพิกถอนใบรับรอง) และ Verifier (ใครก็ตรวจได้ ไม่ต้องมีสิทธิ์) ผู้ไม่ได้รับอนุญาตจะถูก Smart Contract ปฏิเสธ</p>
+      <div class="grid2">
+        <div class="panel stack">
+          <h3>จัดการ Issuer</h3>
+          <label class="f">Wallet<input class="input mono" id="aAddr" placeholder="0x…"></label>
+          <div class="row"><button class="btn primary" id="aGrant">ให้สิทธิ์ Issuer</button><button class="btn danger" id="aRevoke">ถอนสิทธิ์</button><button class="btn ghost" id="aCheck">ตรวจบทบาท</button></div>
+          <div id="aResult"></div>
+        </div>
+        <div class="panel"><h3>ข้อมูลระบบ</h3><dl class="kv" id="sysInfo"><dt>Contract</dt><dd>…</dd></dl></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="toasts"></div>
+
+<script>
+// ═════════════ CONFIG ═════════════
+const CFG = Object.assign({
+  contract: "0x94e2fEb4918E018eF0539e425057075Eb05537BD",
+  deployBlock: 12201614,
+  chainId: 11155111,
+  chainHex: "0xaa36a7",
+  rpc: ["https://ethereum-sepolia-rpc.publicnode.com", "https://sepolia.drpc.org"],
+  explorer: "https://sepolia.etherscan.io"
+}, window.__STV_CONFIG || {});
+
+const ABI = [
+  "function admin() view returns (address)",
+  "function isIssuer(address) view returns (bool)",
+  "function setIssuer(address account, bool allowed)",
+  "function createCourse(string code, string name, string category, uint32 hoursCount, uint32 validityDays)",
+  "function setCourseActive(string code, bool active)",
+  "function issueCertificate(string certId, string courseCode, address recipient, bytes32 fileHash, uint8 grade, uint64 expiresAt)",
+  "function issueBatch(string courseCode, tuple(string certId, address recipient, bytes32 fileHash, uint8 grade)[] items, uint64 expiresAt)",
+  "function suspendCertificate(string certId, string reason)",
+  "function reinstateCertificate(string certId, string note)",
+  "function revokeCertificate(string certId, string reason)",
+  "function verify(string certId) view returns (uint8)",
+  "function verifyByHash(bytes32 fileHash) view returns (string certId, uint8 verdict)",
+  "function getCertificate(string certId) view returns (tuple(string courseCode, address recipient, bytes32 fileHash, uint8 grade, uint8 status, uint64 issuedAt, uint64 expiresAt, address issuedBy, bool exists))",
+  "function getCourse(string code) view returns (tuple(string code, string name, string category, uint32 hoursCount, uint32 validityDays, bool active, uint64 createdAt, bool exists))",
+  "function getCourseCodes() view returns (string[])",
+  "function getCertificatesOf(address recipient) view returns (string[])",
+  "function totalCertificates() view returns (uint256)",
+  "event CertificateIssued(string certId, string courseCode, address indexed recipient, bytes32 fileHash)",
+  "event StatusChanged(string certId, uint8 action, string note, address indexed by)",
+  "error NotAdmin()", "error NotIssuer()", "error InvalidInput()", "error CourseExists()", "error CourseNotFound()",
+  "error CourseClosed()", "error CertExists()", "error CertNotFound()", "error HashUsed()", "error BadStatus()"
+];
+const ERR_TH = {
+  NotAdmin: "เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น", NotIssuer: "Wallet นี้ไม่มีสิทธิ์ Issuer", InvalidInput: "ข้อมูลไม่ถูกต้อง",
+  CourseExists: "รหัสหลักสูตรนี้มีอยู่แล้ว", CourseNotFound: "ไม่พบหลักสูตร", CourseClosed: "หลักสูตรนี้ปิดรับการออกใบรับรองแล้ว",
+  CertExists: "รหัสใบรับรองซ้ำ", CertNotFound: "ไม่พบใบรับรอง", HashUsed: "ไฟล์นี้เคยถูกบันทึกไปแล้ว", BadStatus: "สถานะปัจจุบันทำรายการนี้ไม่ได้"
+};
+const GRADES = ["Pass", "Merit", "Distinction"];
+const GRADE_TH = ["ผ่านเกณฑ์", "ดี", "ดีเยี่ยม"];
+const VERDICT = [
+  { key: "none", word: "NOT FOUND", th: "ไม่พบใบรับรองนี้ในระบบ อาจเป็นเอกสารปลอม" },
+  { key: "valid", word: "VALID", th: "ใบรับรองของแท้และยังมีผลใช้งาน" },
+  { key: "expired", word: "EXPIRED", th: "ใบรับรองของแท้ แต่หมดอายุแล้ว" },
+  { key: "suspended", word: "SUSPENDED", th: "ใบรับรองถูกระงับชั่วคราว ระหว่างการตรวจสอบ" },
+  { key: "revoked", word: "REVOKED", th: "ใบรับรองถูกเพิกถอนแล้ว ใช้อ้างอิงไม่ได้" }
+];
+const ACTIONS = [
+  { th: "ออกใบรับรอง", c: "var(--accent)" }, { th: "ระงับชั่วคราว", c: "var(--suspended)" },
+  { th: "คืนสถานะ", c: "var(--valid)" }, { th: "เพิกถอน", c: "var(--revoked)" }
+];
+
+// ═════════════ STATE / HELPERS ═════════════
+const net = ethers.Network.from(CFG.chainId);
+let reader, ro, signer, rw, account = null, isAdmin = false, canIssue = false;
+const courseCache = {};
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const short = a => a ? a.slice(0, 6) + "…" + a.slice(-4) : "-";
+const dt = ts => Number(ts) ? new Date(Number(ts) * 1000).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : "-";
+const dDay = ms => new Date(ms).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
+const normName = s => s.trim().replace(/ +/g, " ");
+const verifyUrl = id => location.origin + location.pathname + "?verify=" + encodeURIComponent(id);
+const txLink = h => `<a target="_blank" rel="noopener" href="${CFG.explorer}/tx/${h}">ดูธุรกรรม</a>`;
+function randId() { const a = new Uint8Array(4); crypto.getRandomValues(a); const d = new Date(); return `STV-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}-${[...a].map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase().slice(0, 6)}`; }
+function errMsg(e) {
+  const name = e?.revert?.name || (e?.data && (() => { try { return ro.interface.parseError(e.data)?.name; } catch { return null; } })());
+  if (name && ERR_TH[name]) return ERR_TH[name];
+  if (e?.code === "ACTION_REJECTED" || e?.code === 4001 || e?.info?.error?.code === 4001) return "ยกเลิกใน MetaMask";
+  return e?.shortMessage || e?.reason || e?.message || String(e);
+}
+function toast(html, type = "", ms = 6000) {
+  const t = document.createElement("div"); t.className = "toast " + type; t.innerHTML = html;
+  $("toasts").appendChild(t); setTimeout(() => t.remove(), ms); return t;
+}
+function verdictOf(c) {
+  if (!c || !c.exists) return 0;
+  if (Number(c.status) === 2) return 4;
+  if (Number(c.status) === 1) return 3;
+  if (Number(c.expiresAt) && Date.now() / 1000 > Number(c.expiresAt)) return 2;
+  return 1;
+}
+async function course(code) {
+  if (courseCache[code]) return courseCache[code];
+  try { courseCache[code] = await ro.getCourse(code); } catch { courseCache[code] = { code, name: code, category: "", hoursCount: 0, validityDays: 0, active: false }; }
+  return courseCache[code];
+}
+
+// ═════════════ PROVIDER ═════════════
+async function initReader() {
+  for (const url of CFG.rpc) {
+    try {
+      const p = new ethers.JsonRpcProvider(url, net, { staticNetwork: net });
+      const b = await Promise.race([p.getBlockNumber(), sleep(6000).then(() => { throw new Error("timeout"); })]);
+      reader = p; ro = new ethers.Contract(CFG.contract, ABI, reader);
+      setNet(true, b); return;
+    } catch {}
+  }
+  setNet(false);
+}
+function setNet(ok, b) {
+  $("netDot").classList.toggle("live", ok);
+  $("netText").textContent = ok ? `Sepolia · block ${b}` : "เชื่อมต่อ Sepolia ไม่ได้";
+}
+
+// ═════════════ WALLET ═════════════
+async function connect(silent = false) {
+  if (!window.ethereum) { if (!silent) toast("ไม่พบ MetaMask ในเบราว์เซอร์นี้", "err"); return false; }
+  try {
+    const accts = await window.ethereum.request({ method: silent ? "eth_accounts" : "eth_requestAccounts" });
+    if (!accts.length) return false;
+    try { await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CFG.chainHex }] }); } catch {}
+    const bp = new ethers.BrowserProvider(window.ethereum);
+    signer = await bp.getSigner(); account = await signer.getAddress();
+    rw = new ethers.Contract(CFG.contract, ABI, signer);
+    const [adm, iss] = await Promise.all([ro.admin(), ro.isIssuer(account)]);
+    isAdmin = adm.toLowerCase() === account.toLowerCase(); canIssue = isAdmin || iss;
+    $("walletLabel").textContent = short(account);
+    $("walletRole").textContent = isAdmin ? "Admin · Issuer" : canIssue ? "Issuer" : "Verifier";
+    document.querySelectorAll(".lock").forEach(l => l.style.visibility = (l.dataset.role === "admin" ? isAdmin : canIssue) ? "hidden" : "visible");
+    if (!$("iWallet").value) $("iWallet").value = account;
+    route();
+    return true;
+  } catch (e) { if (!silent) toast(errMsg(e), "err"); return false; }
+}
+$("walletBtn").onclick = () => connect();
+if (window.ethereum) { window.ethereum.on?.("accountsChanged", () => location.reload()); window.ethereum.on?.("chainChanged", () => location.reload()); }
+
+async function needWallet() { if (account) return true; return connect(); }
+
+async function send(label, fn, staticFn, onStep) {
+  if (!(await needWallet())) return null;
+  try {
+    onStep?.("simulate");
+    if (staticFn) await staticFn();
+    onStep?.("sign");
+    const t = toast(`${label} · รอยืนยันใน MetaMask…`, "", 120000);
+    const tx = await fn();
+    t.innerHTML = `${label} · ส่งแล้ว รอบันทึกบน blockchain… ${txLink(tx.hash)}`;
+    onStep?.("mine");
+    const rc = await reader.waitForTransaction(tx.hash);
+    t.remove();
+    if (!rc || rc.status !== 1) throw new Error("ธุรกรรมล้มเหลว");
+    toast(`✓ ${label} สำเร็จ · ${txLink(tx.hash)}`, "ok", 9000);
+    return { tx, rc };
+  } catch (e) { toast(`${label} ไม่สำเร็จ: ${esc(errMsg(e))}`, "err", 9000); return null; }
+}
+
+// ═════════════ ROUTER ═════════════
+const TITLES = { verify: "VERIFY", wallet: "MY CREDENTIALS", issue: "ISSUE", manage: "STATUS", courses: "COURSES", access: "ACCESS" };
+function route() {
+  const v = (location.hash || "#verify").slice(1);
+  const view = TITLES[v] ? v : "verify";
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + view));
+  document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.dataset.v === view));
+  $("crumb").textContent = TITLES[view];
+  if (view === "wallet") loadWallet();
+  if (view === "issue" || view === "courses") loadCourses();
+  if (view === "access") loadSystem();
+}
+window.addEventListener("hashchange", route);
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); location.hash = "#verify"; setTimeout(() => $("vInput").focus(), 50); }
+});
+
+// ═════════════ GRAPHICS ═════════════
+function fingerprint(ctx, cx, cy, r, seed, color) {
+  const b = ethers.getBytes(ethers.id(String(seed)));
+  ctx.save(); ctx.translate(cx, cy); ctx.lineCap = "round"; ctx.strokeStyle = color; ctx.fillStyle = color;
+  for (let i = 0; i < 11; i++) {
+    const rr = r * (0.22 + i * 0.072), start = b[i] / 255 * Math.PI * 2, len = (0.3 + b[i + 11] / 255 * 1.45) * Math.PI;
+    ctx.globalAlpha = 0.28 + (b[i + 20] % 70) / 100; ctx.lineWidth = Math.max(1, r * 0.018 * (1 + (b[i] % 3)));
+    ctx.beginPath(); ctx.arc(0, 0, rr, start, start + len); ctx.stroke();
+    ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.arc(Math.cos(start + len) * rr, Math.sin(start + len) * rr, ctx.lineWidth * 1.1, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(0, 0, r * 0.08, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function qrCanvas(text, size, dark = "#0c0e12", light = "#ffffff") {
+  const d = document.createElement("div");
+  new QRCode(d, { text, width: size, height: size, colorDark: dark, colorLight: light, correctLevel: QRCode.CorrectLevel.M });
+  return d.querySelector("canvas");
+}
+let fontsReady = null;
+function loadFonts() {
+  fontsReady ??= Promise.all(["700 80px Anuphan", "500 40px Anuphan", "400 24px Anuphan", "500 24px 'Space Grotesk'", "700 24px 'Space Grotesk'", "400 20px 'JetBrains Mono'"]
+    .map(f => document.fonts.load(f).catch(() => {}))).then(() => document.fonts.ready);
+  return fontsReady;
+}
+function fitText(ctx, text, maxW, size, weight, family) {
+  let s = size; do { ctx.font = `${weight} ${s}px ${family}`; s -= 2; } while (ctx.measureText(text).width > maxW && s > 20); return s + 2;
+}
+// Certificate artwork (1600 × 1000)
+function drawCertificate(cv, d) {
+  const ctx = cv.getContext("2d"), W = 1600, H = 1000, L = 420;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#f3f2ec"; ctx.fillRect(0, 0, W, H);
+  // subtle grid on paper
+  ctx.strokeStyle = "rgba(12,14,18,.045)"; ctx.lineWidth = 1;
+  for (let x = L; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(L, y + .5); ctx.lineTo(W, y + .5); ctx.stroke(); }
+  // left ink band
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#14181d"); g.addColorStop(1, "#0a0c0f");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, L, H);
+  ctx.fillStyle = "#c6ff3d"; ctx.fillRect(L - 6, 0, 6, H);
+  // brand
+  ctx.fillStyle = "#c6ff3d"; roundRect(ctx, 60, 64, 64, 64, 16); ctx.fill();
+  ctx.fillStyle = "#0b0d06"; ctx.font = "700 28px 'Space Grotesk'"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("ST", 92, 97);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#e9ecef"; ctx.font = "700 26px 'Space Grotesk'"; ctx.fillText("SKILLTRUST", 142, 92);
+  ctx.fillStyle = "#8a919b"; ctx.font = "500 17px 'Space Grotesk'"; ctx.fillText("ACADEMY", 142, 118);
+  // vertical label
+  ctx.save(); ctx.translate(76, 610); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = "#5b616a"; ctx.font = "400 16px 'JetBrains Mono'"; ctx.fillText("VERIFIED ON ETHEREUM · SEPOLIA", 0, 0); ctx.restore();
+  // fingerprint in band
+  fingerprint(ctx, 250, 380, 130, d.certId, "#c6ff3d");
+  // QR
+  ctx.fillStyle = "#ffffff"; roundRect(ctx, 110, 700, 230, 230, 18); ctx.fill();
+  const q = qrCanvas(d.verifyUrl, 200); ctx.drawImage(q, 125, 715, 200, 200);
+  ctx.fillStyle = "#8a919b"; ctx.font = "400 15px 'JetBrains Mono'"; ctx.textAlign = "center"; ctx.fillText("SCAN TO VERIFY", 225, 962); ctx.textAlign = "left";
+
+  // right content
+  const X = L + 90, R = W - 90;
+  ctx.fillStyle = "#0c0e12"; ctx.font = "500 20px 'Space Grotesk'"; ctx.fillText("CERTIFICATE  OF  ACHIEVEMENT", X, 128);
+  ctx.fillStyle = "#0c0e12"; ctx.fillRect(X, 150, 64, 3);
+  ctx.fillStyle = "#7a8089"; ctx.font = "400 26px Anuphan"; ctx.fillText("มอบให้แก่", X, 250);
+  const nm = d.name || "ชื่อ นามสกุล";
+  fitText(ctx, nm, R - X, 92, 700, "Anuphan"); ctx.fillStyle = d.name ? "#0c0e12" : "#b9bcc2"; ctx.fillText(nm, X, 350);
+  ctx.fillStyle = "#7a8089"; ctx.font = "400 26px Anuphan"; ctx.fillText("สำเร็จการอบรมหลักสูตร", X, 440);
+  fitText(ctx, d.courseName || "—", R - X, 50, 600, "Anuphan"); ctx.fillStyle = "#0c0e12"; ctx.fillText(d.courseName || "—", X, 505);
+  ctx.fillStyle = "#5b616a"; ctx.font = "400 21px 'JetBrains Mono'";
+  ctx.fillText(`${d.courseCode || ""}  ·  ${(d.category || "").toUpperCase()}  ·  ${d.hours || 0} HRS`, X, 548);
+  // grade pill
+  const gl = `${GRADES[d.grade]}  ·  ${GRADE_TH[d.grade]}`;
+  ctx.font = "600 24px Anuphan"; const pw = ctx.measureText(gl).width + 56;
+  ctx.fillStyle = "#0c0e12"; roundRect(ctx, X, 594, pw, 56, 28); ctx.fill();
+  ctx.fillStyle = "#c6ff3d"; ctx.beginPath(); ctx.arc(X + 26, 622, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#f3f2ec"; ctx.fillText(gl, X + 42, 631);
+  // footer columns
+  ctx.fillStyle = "rgba(12,14,18,.14)"; ctx.fillRect(X, 760, R - X, 1);
+  const cols = [["ISSUED", d.issuedAt ? dDay(d.issuedAt) : "—"], ["VALID UNTIL", d.expiresAt ? dDay(d.expiresAt) + (d.expiresShowTime ? " " + new Date(d.expiresAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) : "") : "ไม่มีวันหมดอายุ"], ["CERTIFICATE ID", d.certId]];
+  const cw = (R - X) / 3;
+  cols.forEach(([k, v], i) => {
+    ctx.fillStyle = "#7a8089"; ctx.font = "400 16px 'JetBrains Mono'"; ctx.fillText(k, X + i * cw, 805);
+    ctx.fillStyle = "#0c0e12"; ctx.font = i === 2 ? "600 24px 'JetBrains Mono'" : "500 25px Anuphan"; ctx.fillText(v, X + i * cw, 845);
+  });
+  ctx.fillStyle = "#9aa0a8"; ctx.font = "400 15px 'JetBrains Mono'";
+  ctx.fillText(`REGISTRY ${CFG.contract.slice(0, 10)}…${CFG.contract.slice(-6)}  ·  FILE HASH RECORDED ON-CHAIN`, X, 930);
+}
+function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+const toBlob = cv => new Promise(r => cv.toBlob(r, "image/png"));
+async function hashBlob(blob) { return ethers.keccak256(new Uint8Array(await blob.arrayBuffer())); }
+
+// credential flip card (front: file image or chain-only card; back: chain data + QR)
+function credCard(id, c, crs, opts = {}) {
+  const v = opts.verdict ?? verdictOf(c), V = VERDICT[v];
+  const wrap = document.createElement("div"); wrap.className = "flip";
+  wrap.innerHTML = `<div class="inner">
+    <div class="face front">${opts.image ? `<img alt="certificate" src="${opts.image}">` : `
+      <div class="chaincard"><canvas class="fp" width="300" height="300"></canvas>
+        <div class="top"><div><div class="lbl">${esc((crs.category || "").toUpperCase())} · ${esc(crs.code || c.courseCode)}</div><h4>${esc(crs.name)}</h4>
+          <div class="lbl" style="margin-top:8px;color:var(--accent)">${GRADES[Number(c.grade)].toUpperCase()}</div></div><span class="chip c-${V.key}">${V.word}</span></div>
+        <div class="bottom"><div><div class="lbl">CERTIFICATE ID</div><div class="mono" style="font-size:13px">${esc(id)}</div></div></div></div>`}
+    </div>
+    <div class="face back"><div class="meta">
+      <div><span>Status</span><b class="c-${V.key}">${V.word}</b></div>
+      <div><span>Issued</span>${dt(c.issuedAt)}</div>
+      <div><span>Valid until</span>${Number(c.expiresAt) ? dt(c.expiresAt) : "ไม่มีวันหมดอายุ"}</div>
+      <div><span>Recipient</span><span class="mono">${short(c.recipient)}</span></div>
+      <div><span>File hash</span><span class="mono">${c.fileHash.slice(0, 18)}…</span></div>
+    </div><div class="qrbox"></div></div></div>`;
+  const fp = wrap.querySelector(".fp"); if (fp) fingerprint(fp.getContext("2d"), 150, 150, 140, id, "#c6ff3d");
+  wrap.querySelector(".qrbox").appendChild(qrCanvas(verifyUrl(id), 208));
+  wrap.onclick = e => { if (!e.target.closest("a,button")) wrap.classList.toggle("flipped"); };
+  const box = document.createElement("div"); box.appendChild(wrap);
+  const hint = document.createElement("div"); hint.className = "flip-hint"; hint.textContent = "CLICK TO FLIP ↻"; box.appendChild(hint);
+  return box;
+}
+
+// timeline from on-chain events
+async function timeline(id) {
+  const latest = await reader.getBlockNumber();
+  const from = Math.max(0, Number(CFG.deployBlock) || 0), step = 45000;
+  const logs = [];
+  for (let s = from; s <= latest; s += step) {
+    const e = Math.min(latest, s + step - 1);
+    try { logs.push(...await ro.queryFilter(ro.filters.StatusChanged(), s, e)); } catch {}
+  }
+  const mine = logs.filter(l => l.args.certId === id);
+  const blocks = await Promise.all(mine.map(l => reader.getBlock(l.blockNumber)));
+  return mine.map((l, i) => ({ action: Number(l.args.action), note: l.args.note, by: l.args.by, at: blocks[i]?.timestamp, tx: l.transactionHash }));
+}
+function renderTimeline(items) {
+  if (!items.length) return `<p class="muted" style="font-size:13px">ไม่พบประวัติ</p>`;
+  return `<ul class="tl">${items.map(t => `<li style="--tc:${ACTIONS[t.action].c}"><b>${ACTIONS[t.action].th}</b>
+    ${t.note ? `<span class="muted">“${esc(t.note)}”</span><br>` : ""}<small>${dt(t.at)} · โดย ${short(t.by)} · ${txLink(t.tx)}</small></li>`).join("")}</ul>`;
+}
+
+// ═════════════ 01 VERIFY ═════════════
+let fileImageURL = null;
+function setPipe(steps) {
+  const p = $("pipe"); p.hidden = false;
+  p.innerHTML = steps.map(s => `<li data-k="${s.k}"><b>${s.code}</b>${s.t}</li>`).join("");
+}
+function step(k, state) { const li = document.querySelector(`#pipe li[data-k="${k}"]`); if (li) li.className = state; }
+
+async function runVerify(id, fileHash = null) {
+  id = (id || "").trim();
+  if (!id) return;
+  try { const u = new URL(id); id = u.searchParams.get("verify") || id; } catch {}
+  $("vInput").value = id; $("verdict").innerHTML = "";
+  const steps = [{ k: "net", code: "01 NETWORK", t: "เชื่อมต่อ Sepolia" }, { k: "find", code: "02 LOOKUP", t: "ค้นหารหัสใน contract" },
+    { k: "stat", code: "03 STATUS", t: "ตรวจสถานะการใช้งาน" }, { k: "exp", code: "04 EXPIRY", t: "ตรวจวันหมดอายุ" }];
+  if (fileHash) steps.push({ k: "hash", code: "05 INTEGRITY", t: "เทียบ hash ของไฟล์" });
+  setPipe(steps);
+  try {
+    step("net", "active"); await reader.getBlockNumber(); await sleep(260); step("net", "done");
+    step("find", "active");
+    const v = Number(await ro.verify(id)); await sleep(260);
+    if (v === 0) { step("find", "fail"); return showVerdict(id, null, null, fileHash ? "tampered" : 0); }
+    step("find", "done");
+    const c = await ro.getCertificate(id); const crs = await course(c.courseCode);
+    step("stat", "active"); await sleep(260); step("stat", v >= 3 ? "fail" : "done");
+    step("exp", "active"); await sleep(260); step("exp", v === 2 ? "warn" : "done");
+    let integrity = null;
+    if (fileHash) { step("hash", "active"); await sleep(300); integrity = fileHash.toLowerCase() === c.fileHash.toLowerCase(); step("hash", integrity ? "done" : "fail"); }
+    showVerdict(id, c, crs, integrity === false ? "tampered" : v, integrity);
+  } catch (e) { document.querySelectorAll("#pipe li.active").forEach(l => l.className = "fail"); toast("ตรวจสอบไม่สำเร็จ: " + esc(errMsg(e)), "err"); }
+}
+async function showVerdict(id, c, crs, v, integrity = null) {
+  const box = $("verdict");
+  if (v === "tampered") {
+    box.innerHTML = `<div class="verdict"><div class="vbanner v-tampered"><div><div class="word">TAMPERED</div><p>hash ของไฟล์ไม่ตรงกับที่บันทึกไว้บน blockchain ไฟล์นี้ถูกแก้ไขหรือเป็นของปลอม</p></div></div></div>`;
+    return;
+  }
+  const V = VERDICT[v];
+  if (!c) { box.innerHTML = `<div class="verdict"><div class="vbanner v-none"><div><div class="word">${V.word}</div><p>${V.th}</p></div><span class="mono">${esc(id)}</span></div></div>`; return; }
+  box.innerHTML = `<div class="verdict">
+    <div class="vbanner v-${V.key}"><div><div class="word">${V.word}</div><p>${V.th}${integrity ? " · ไฟล์ตรงกับต้นฉบับ ไม่ถูกแก้ไข" : ""}</p></div>
+      <div class="row"><button class="btn ghost" id="copyLink">คัดลอกลิงก์ตรวจสอบ</button></div></div>
+    <div id="vCard"></div>
+    <div class="stack">
+      <div class="panel"><h3>รายละเอียด</h3><dl class="kv">
+        <dt>รหัสใบรับรอง</dt><dd class="mono">${esc(id)}</dd>
+        <dt>หลักสูตร</dt><dd>${esc(crs.name)} <span class="dim">(${esc(c.courseCode)})</span></dd>
+        <dt>หมวด / ชั่วโมง</dt><dd>${esc(crs.category)} · ${crs.hoursCount} ชั่วโมง</dd>
+        <dt>ระดับผล</dt><dd>${GRADES[Number(c.grade)]} · ${GRADE_TH[Number(c.grade)]}</dd>
+        <dt>วันที่ออก</dt><dd>${dt(c.issuedAt)}</dd>
+        <dt>หมดอายุ</dt><dd>${Number(c.expiresAt) ? dt(c.expiresAt) : "ไม่มีวันหมดอายุ"}</dd>
+        <dt>Wallet ผู้รับ</dt><dd class="mono">${esc(c.recipient)}</dd>
+        <dt>ออกโดย</dt><dd class="mono">${esc(c.issuedBy)}</dd>
+      </dl></div>
+      <div class="panel"><h3>ประวัติบน blockchain</h3><div id="vTl" class="muted" style="font-size:13px">กำลังโหลด…</div></div>
+    </div></div>`;
+  $("vCard").appendChild(credCard(id, c, crs, { image: integrity ? fileImageURL : null, verdict: v }));
+  $("copyLink").onclick = () => { navigator.clipboard?.writeText(verifyUrl(id)); toast("คัดลอกลิงก์แล้ว", "ok", 2500); };
+  const vTl = $("vTl"); timeline(id).then(t => vTl.innerHTML = renderTimeline(t)).catch(() => vTl.textContent = "โหลดประวัติไม่ได้");
+}
+$("verifyBtn").onclick = () => { fileImageURL = null; runVerify($("vInput").value); };
+$("vInput").addEventListener("keydown", e => { if (e.key === "Enter") { fileImageURL = null; runVerify($("vInput").value); } });
+
+async function verifyFile(f) {
+  if (!f) return;
+  $("verdict").innerHTML = "";
+  const h = await hashBlob(f);
+  fileImageURL = f.type.startsWith("image/") ? URL.createObjectURL(f) : null;
+  toast(`คำนวณ hash ของไฟล์แล้ว <span class="mono">${h.slice(0, 18)}…</span>`, "", 4000);
+  const [id] = await ro.verifyByHash(h);
+  if (!id) {
+    setPipe([{ k: "net", code: "01 NETWORK", t: "เชื่อมต่อ Sepolia" }, { k: "hash", code: "02 INTEGRITY", t: "ค้นหา hash ของไฟล์" }]);
+    step("net", "done"); step("hash", "active"); await sleep(400); step("hash", "fail");
+    return showVerdict("", null, null, "tampered");
+  }
+  runVerify(id, h);
+}
+const drop = $("drop");
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => verifyFile(e.dataTransfer.files[0]));
+$("dropFile").onchange = e => { verifyFile(e.target.files[0]); e.target.value = ""; };
+
+let scanner = null;
+$("scanBtn").onclick = async () => {
+  if (scanner) { await scanner.stop().catch(() => {}); scanner.clear(); scanner = null; $("scanBtn").textContent = "สแกน QR"; return; }
+  if (!window.Html5Qrcode) { toast("โหลดตัวสแกน QR ไม่ได้", "err"); return; }
+  scanner = new Html5Qrcode("reader"); $("scanBtn").textContent = "หยุดสแกน";
+  try {
+    await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 220 }, async text => {
+      await scanner.stop(); scanner.clear(); scanner = null; $("scanBtn").textContent = "สแกน QR"; fileImageURL = null; runVerify(text);
+    });
+  } catch (e) { scanner = null; $("scanBtn").textContent = "สแกน QR"; toast("เปิดกล้องไม่ได้ ใช้กล้องมือถือสแกน QR บนใบรับรองแทนได้", "err"); }
+};
+
+// ═════════════ 02 WALLET ═════════════
+async function loadWallet() {
+  const body = $("walletBody");
+  if (!account) { body.innerHTML = `<div class="empty">เชื่อมต่อ Wallet เพื่อดูใบรับรองของคุณ<br><br><button class="btn primary" id="wConnect">Connect Wallet</button></div>`; $("wConnect").onclick = () => connect(); return; }
+  body.innerHTML = `<div class="empty">กำลังโหลด…</div>`;
+  try {
+    const ids = [...await ro.getCertificatesOf(account)].reverse();
+    const [certs, verdicts] = await Promise.all([Promise.all(ids.map(id => ro.getCertificate(id))), Promise.all(ids.map(id => ro.verify(id).then(Number)))]);
+    const counts = [0, 0, 0, 0, 0]; verdicts.forEach(v => counts[v]++);
+    body.innerHTML = `<div class="stats">
+      <div class="stat"><b class="c-valid">${counts[1]}</b><span>ใช้งานได้</span></div>
+      <div class="stat"><b class="c-expired">${counts[2]}</b><span>หมดอายุ</span></div>
+      <div class="stat"><b class="c-suspended">${counts[3]}</b><span>ระงับชั่วคราว</span></div>
+      <div class="stat"><b class="c-revoked">${counts[4]}</b><span>เพิกถอน</span></div></div>
+      ${ids.length ? `<div class="tiles" id="tiles"></div>` : `<div class="empty">ยังไม่มีใบรับรองที่ผูกกับ ${short(account)}</div>`}`;
+    for (let i = 0; i < ids.length; i++) {
+      const crs = await course(certs[i].courseCode);
+      const t = document.createElement("div"); t.className = "tile";
+      t.appendChild(credCard(ids[i], certs[i], crs, { verdict: verdicts[i] }));
+      const a = document.createElement("div"); a.className = "actions";
+      a.innerHTML = `<button class="btn">คัดลอกลิงก์</button><a class="btn" href="?verify=${encodeURIComponent(ids[i])}#verify">ตรวจสอบ</a>`;
+      a.querySelector("button").onclick = () => { navigator.clipboard?.writeText(verifyUrl(ids[i])); toast("คัดลอกลิงก์แล้ว ส่งให้ผู้ว่าจ้างได้เลย", "ok", 2500); };
+      t.appendChild(a); $("tiles").appendChild(t);
+    }
+  } catch (e) { body.innerHTML = `<div class="empty">${esc(errMsg(e))}</div>`; }
+}
+
+// ═════════════ COURSES ═════════════
+let coursesList = [];
+async function loadCourses() {
+  try {
+    const codes = await ro.getCourseCodes();
+    coursesList = await Promise.all(codes.map(c => ro.getCourse(c)));
+    coursesList.forEach(c => courseCache[c.code] = c);
+  } catch (e) { coursesList = []; }
+  // course cards
+  $("courseList").innerHTML = coursesList.length ? coursesList.map(c => `<div class="course ${c.active ? "" : "off"}">
+      <span class="cat">${esc(c.category)}</span><h4>${esc(c.name)}</h4>
+      <div class="muted" style="font-size:12.5px"><span class="mono">${esc(c.code)}</span> · ${c.hoursCount} ชม. · ${Number(c.validityDays) ? `อายุ ${c.validityDays} วัน` : "ไม่หมดอายุ"}</div>
+      <div class="row"><span class="chip ${c.active ? "c-valid" : "c-none"}">${c.active ? "OPEN" : "CLOSED"}</span>
+      <button class="btn ghost" style="padding:6px 12px;font-size:12.5px" data-toggle="${esc(c.code)}" data-active="${c.active}">${c.active ? "ปิดรับ" : "เปิดรับ"}</button></div></div>`).join("")
+    : `<div class="empty">ยังไม่มีหลักสูตร</div>`;
+  document.querySelectorAll("[data-toggle]").forEach(b => b.onclick = async () => {
+    const code = b.dataset.toggle, next = b.dataset.active !== "true";
+    if (await send(next ? `เปิดรับ ${code}` : `ปิดรับ ${code}`, () => rw.setCourseActive(code, next), () => rw.setCourseActive.staticCall(code, next))) { delete courseCache[code]; loadCourses(); }
+  });
+  // selects
+  const open = coursesList.filter(c => c.active);
+  for (const sel of [$("iCourse"), $("bCourse")]) {
+    const cur = sel.value;
+    sel.innerHTML = open.length ? open.map(c => `<option value="${esc(c.code)}">${esc(c.code)} · ${esc(c.name)}</option>`).join("") : `<option value="">— ยังไม่มีหลักสูตรที่เปิดรับ —</option>`;
+    if (cur && open.some(c => c.code === cur)) sel.value = cur;
+  }
+  updateExpHint(); schedulePreview();
+}
+$("cCreate").onclick = async () => {
+  const code = $("cCode").value.trim().toUpperCase(), name = $("cName").value.trim(), cat = $("cCat").value;
+  const hours = parseInt($("cHours").value) || 0, days = parseInt($("cDays").value) || 0;
+  if (!code || !name) return toast("กรอกรหัสและชื่อหลักสูตร", "err");
+  if (await send(`ลงทะเบียน ${code}`, () => rw.createCourse(code, name, cat, hours, days), () => rw.createCourse.staticCall(code, name, cat, hours, days))) {
+    $("cCode").value = $("cName").value = ""; loadCourses();
+  }
+};
+
+// ═════════════ 03 ISSUE — single ═════════════
+let grade = 0, expMode = "course", lastIssued = null;
+const selCourse = () => coursesList.find(c => c.code === $("iCourse").value);
+function expiryMs(crs, mode, customInput) {
+  if (mode === "custom") { const t = new Date(customInput.value).getTime(); return isNaN(t) ? 0 : t; }
+  return crs && Number(crs.validityDays) ? Date.now() + Number(crs.validityDays) * 86400000 : 0;
+}
+function updateExpHint() {
+  const c = selCourse();
+  $("iExpHint").textContent = expMode === "custom" ? "กำหนดวัน-เวลาหมดอายุเอง (ต้องเป็นเวลาในอนาคต)" :
+    c ? (Number(c.validityDays) ? `อายุ ${c.validityDays} วันนับจากวันที่ออก` : "หลักสูตรนี้ไม่มีวันหมดอายุ") : "";
+}
+document.querySelectorAll("#iGrade button").forEach(b => b.onclick = () => { grade = +b.dataset.g; document.querySelectorAll("#iGrade button").forEach(x => x.classList.toggle("on", x === b)); schedulePreview(); });
+document.querySelectorAll("#iExpMode button").forEach(b => b.onclick = () => {
+  expMode = b.dataset.e; document.querySelectorAll("#iExpMode button").forEach(x => x.classList.toggle("on", x === b));
+  $("iExpAt").hidden = expMode !== "custom";
+  if (expMode === "custom" && !$("iExpAt").value) { const d = new Date(Date.now() + 10 * 60000); d.setSeconds(0, 0); $("iExpAt").value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+  updateExpHint(); schedulePreview();
+});
+["iId", "iName", "iCourse", "iExpAt"].forEach(id => $(id).addEventListener("input", () => { if (id === "iCourse") updateExpHint(); schedulePreview(); }));
+$("iNewId").onclick = () => { $("iId").value = randId(); schedulePreview(); };
+let pvT = null;
+function schedulePreview() { clearTimeout(pvT); pvT = setTimeout(renderPreview, 120); }
+async function renderPreview() {
+  await loadFonts();
+  const c = selCourse();
+  drawCertificate($("iCanvas"), { certId: $("iId").value || "STV-0000-000000", name: normName($("iName").value), courseName: c?.name, courseCode: c?.code, category: c?.category, hours: c?.hoursCount,
+    grade, issuedAt: Date.now(), expiresAt: expiryMs(c, expMode, $("iExpAt")), expiresShowTime: expMode === "custom", verifyUrl: verifyUrl($("iId").value || "") });
+}
+function prog(el, items) { $(el).innerHTML = items.map(([t, s]) => `<div class="${s}">${t}</div>`).join(""); }
+
+$("iIssue").onclick = async () => {
+  const id = $("iId").value.trim(), name = normName($("iName").value), wallet = $("iWallet").value.trim(), c = selCourse();
+  if (!id || !name || !c) return toast("กรอกรหัส ชื่อผู้รับ และเลือกหลักสูตร", "err");
+  if (!ethers.isAddress(wallet)) return toast("Wallet ผู้รับไม่ถูกต้อง", "err");
+  if (!(await needWallet())) return;
+  const expMs = expiryMs(c, expMode, $("iExpAt"));
+  if (expMode === "custom" && expMs <= Date.now() + 60000) return toast("วันหมดอายุต้องอยู่ในอนาคตอย่างน้อย 1 นาที", "err");
+  $("iIssue").disabled = true; $("iDone").hidden = true;
+  const P = [["สร้างไฟล์ใบรับรอง", "run"], ["คำนวณ hash ของไฟล์", "wait"], ["จำลองธุรกรรม (ตรวจสิทธิ์/รหัสซ้ำ)", "wait"], ["ยืนยันใน MetaMask", "wait"], ["บันทึกบน blockchain", "wait"]];
+  const set = (i, s) => { P[i][1] = s; prog("iProg", P); };
+  prog("iProg", P);
+  try {
+    await loadFonts();
+    const cv = $("iCanvas");
+    drawCertificate(cv, { certId: id, name, courseName: c.name, courseCode: c.code, category: c.category, hours: c.hoursCount, grade, issuedAt: Date.now(), expiresAt: expMs, expiresShowTime: expMode === "custom", verifyUrl: verifyUrl(id) });
+    const blob = await toBlob(cv); set(0, "done"); set(1, "run");
+    const h = await hashBlob(blob); set(1, "done"); $("iHash").textContent = "FILE HASH " + h;
+    const expSec = expMode === "custom" ? Math.floor(expMs / 1000) : 0;
+    const r = await send(`ออกใบรับรอง ${id}`, () => rw.issueCertificate(id, c.code, wallet, h, grade, expSec),
+      () => rw.issueCertificate.staticCall(id, c.code, wallet, h, grade, expSec),
+      s => { if (s === "simulate") set(2, "run"); if (s === "sign") { set(2, "done"); set(3, "run"); } if (s === "mine") { set(3, "done"); set(4, "run"); } });
+    if (!r) { P.forEach(p => { if (p[1] === "run") p[1] = "err"; }); prog("iProg", P); return; }
+    set(4, "done");
+    const url = URL.createObjectURL(blob);
+    lastIssued = { id, url };
+    $("iDownload").href = url; $("iDownload").download = `${id}.png`; $("iDone").hidden = false;
+    $("iDownload").click();
+    toast(`ดาวน์โหลด ${id}.png แล้ว ไฟล์นี้คือใบรับรองต้นฉบับ (hash ตรงกับบน blockchain)`, "ok", 8000);
+    $("iName").value = ""; $("iId").value = randId();
+  } catch (e) { toast(esc(errMsg(e)), "err"); }
+  finally { $("iIssue").disabled = false; }
+};
+$("iVerifyNow").onclick = () => { if (lastIssued) { location.hash = "#verify"; fileImageURL = lastIssued.url; runVerify(lastIssued.id); } };
+
+// ═════════════ 03 ISSUE — batch ═════════════
+document.querySelectorAll("#issueMode button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#issueMode button").forEach(x => x.classList.toggle("on", x === b));
+  $("issueSingle").hidden = b.dataset.m !== "single"; $("issueBatch").hidden = b.dataset.m !== "batch";
+});
+let batchRows = [], batchFiles = [];
+$("bParse").onclick = () => {
+  const lines = $("bCsv").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  batchRows = lines.slice(0, 21).map(l => {
+    const [name = "", wallet = "", g = "Pass"] = l.split(",").map(s => s.trim());
+    const gi = Math.max(0, GRADES.findIndex(x => x.toLowerCase() === g.toLowerCase()));
+    const err = !normName(name) ? "ไม่มีชื่อ" : !ethers.isAddress(wallet) ? "wallet ไม่ถูกต้อง" : "";
+    return { id: randId(), name: normName(name), wallet, grade: gi, err };
+  });
+  const tooMany = lines.length > 20;
+  $("bTable").innerHTML = batchRows.length ? `<table><tr><th>#</th><th>รหัส</th><th>ชื่อ</th><th>Wallet</th><th>ระดับ</th></tr>${batchRows.map((r, i) =>
+    `<tr><td class="dim">${i + 1}</td><td class="mono">${r.id}</td><td>${esc(r.name)}${r.err ? ` <span class="c-revoked">· ${r.err}</span>` : ""}</td><td class="mono">${esc(short(r.wallet))}</td><td>${GRADES[r.grade]}</td></tr>`).join("")}</table>
+    ${tooMany ? `<p class="c-revoked">สูงสุด 20 คนต่อครั้ง</p>` : ""}` : "ไม่มีข้อมูล";
+  $("bIssue").disabled = !batchRows.length || tooMany || batchRows.some(r => r.err);
+  $("bIssue").textContent = `ออกทั้งหมด (${batchRows.length} ใบ)`;
+  $("bDone").hidden = true;
+};
+$("bIssue").onclick = async () => {
+  const code = $("bCourse").value, c = coursesList.find(x => x.code === code);
+  if (!c) return toast("เลือกหลักสูตร", "err");
+  if (!(await needWallet())) return;
+  $("bIssue").disabled = true;
+  const P = [[`สร้างไฟล์ใบรับรอง 0/${batchRows.length}`, "run"], ["คำนวณ hash ทุกไฟล์", "wait"], ["จำลองธุรกรรม", "wait"], ["ยืนยันใน MetaMask (ครั้งเดียว)", "wait"], ["บันทึกบน blockchain", "wait"]];
+  const set = (i, s, t) => { P[i][1] = s; if (t) P[i][0] = t; prog("bProg", P); };
+  try {
+    await loadFonts();
+    const cv = document.createElement("canvas"); cv.width = 1600; cv.height = 1000;
+    const expMs = Number(c.validityDays) ? Date.now() + Number(c.validityDays) * 86400000 : 0;
+    batchFiles = [];
+    for (let i = 0; i < batchRows.length; i++) {
+      const r = batchRows[i];
+      drawCertificate(cv, { certId: r.id, name: r.name, courseName: c.name, courseCode: c.code, category: c.category, hours: c.hoursCount, grade: r.grade, issuedAt: Date.now(), expiresAt: expMs, verifyUrl: verifyUrl(r.id) });
+      batchFiles.push({ row: r, blob: await toBlob(cv) });
+      set(0, "run", `สร้างไฟล์ใบรับรอง ${i + 1}/${batchRows.length}`);
+    }
+    set(0, "done"); set(1, "run");
+    for (const f of batchFiles) f.hash = await hashBlob(f.blob);
+    set(1, "done");
+    const items = batchFiles.map(f => ({ certId: f.row.id, recipient: f.row.wallet, fileHash: f.hash, grade: f.row.grade }));
+    const r = await send(`ออกใบรับรอง ${items.length} ใบ`, () => rw.issueBatch(code, items, 0), () => rw.issueBatch.staticCall(code, items, 0),
+      s => { if (s === "simulate") set(2, "run"); if (s === "sign") { set(2, "done"); set(3, "run"); } if (s === "mine") { set(3, "done"); set(4, "run"); } });
+    if (!r) { P.forEach(p => { if (p[1] === "run") p[1] = "err"; }); prog("bProg", P); return; }
+    set(4, "done"); $("bDone").hidden = false;
+  } catch (e) { toast(esc(errMsg(e)), "err"); }
+  finally { $("bIssue").disabled = false; }
+};
+$("bZip").onclick = async () => {
+  const zip = new JSZip();
+  const csv = ["certId,name,wallet,grade,fileHash,verifyUrl", ...batchFiles.map(f => [f.row.id, `"${f.row.name}"`, f.row.wallet, GRADES[f.row.grade], f.hash, verifyUrl(f.row.id)].join(","))].join("\n");
+  batchFiles.forEach(f => zip.file(`${f.row.id}.png`, f.blob));
+  zip.file("manifest.csv", String.fromCharCode(0xfeff) + csv);
+  const blob = await zip.generateAsync({ type: "blob" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `skilltrust-batch-${Date.now()}.zip`; a.click();
+};
+
+// ═════════════ 04 MANAGE ═════════════
+async function loadManage() {
+  const id = $("mInput").value.trim(); if (!id) return;
+  const body = $("mBody"); body.innerHTML = `<div class="empty">กำลังโหลด…</div>`;
+  try {
+    const v = Number(await ro.verify(id));
+    if (v === 0) { body.innerHTML = `<div class="empty">ไม่พบใบรับรอง <span class="mono">${esc(id)}</span></div>`; return; }
+    const c = await ro.getCertificate(id), crs = await course(c.courseCode), st = Number(c.status);
+    body.innerHTML = `<div class="grid2"><div id="mCard"></div><div class="stack">
+      <div class="panel stack"><h3>เปลี่ยนสถานะ</h3>
+        <label class="f">เหตุผล / หมายเหตุ<input class="input" id="mReason" placeholder="ระบุเหตุผล"></label>
+        <div class="chips">${["ออกผิดพลาด", "ทุจริตการสอบ", "อยู่ระหว่างตรวจสอบ", "ผู้รับขอยกเลิก", "ตรวจสอบแล้ว ไม่พบปัญหา"].map(t => `<button type="button">${t}</button>`).join("")}</div>
+        <div class="row">
+          ${st === 0 ? `<button class="btn warn" data-act="suspend">ระงับชั่วคราว</button>` : ""}
+          ${st === 1 ? `<button class="btn ok" data-act="reinstate">คืนสถานะ</button>` : ""}
+          ${st !== 2 ? `<button class="btn danger" data-act="revoke">เพิกถอนถาวร</button>` : `<span class="muted">ใบนี้ถูกเพิกถอนถาวรแล้ว ประวัติยังคงอยู่</span>`}
+        </div>
+        <p class="note">ระงับชั่วคราว: ตรวจสอบแล้วจะขึ้นเป็น SUSPENDED และคืนสถานะได้ · เพิกถอน: ถาวร ย้อนกลับไม่ได้</p></div>
+      <div class="panel"><h3>ประวัติ</h3><div id="mTl" class="muted" style="font-size:13px">กำลังโหลด…</div></div></div></div>`;
+    $("mCard").appendChild(credCard(id, c, crs, { verdict: v }));
+    body.querySelectorAll(".chips button").forEach(b => b.onclick = () => $("mReason").value = b.textContent);
+    body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => act(b, id));
+    const mTl = $("mTl"); timeline(id).then(t => mTl.innerHTML = renderTimeline(t)).catch(() => mTl.textContent = "โหลดประวัติไม่ได้");
+  } catch (e) { body.innerHTML = `<div class="empty">${esc(errMsg(e))}</div>`; }
+}
+async function act(btn, id) {
+  const a = btn.dataset.act, reason = $("mReason").value.trim();
+  if (a !== "reinstate" && !reason) return toast("ระบุเหตุผลก่อน", "err");
+  if (a === "revoke" && !btn.classList.contains("arm")) { btn.classList.add("arm"); btn.textContent = "กดอีกครั้งเพื่อยืนยันการเพิกถอน"; setTimeout(() => { btn.classList.remove("arm"); btn.textContent = "เพิกถอนถาวร"; }, 4000); return; }
+  const map = { suspend: ["ระงับ", "suspendCertificate"], reinstate: ["คืนสถานะ", "reinstateCertificate"], revoke: ["เพิกถอน", "revokeCertificate"] };
+  const [th, fn] = map[a], note = reason || "คืนสถานะ";
+  if (await send(`${th} ${id}`, () => rw[fn](id, note), () => rw[fn].staticCall(id, note))) loadManage();
+}
+$("mLoad").onclick = loadManage;
+$("mInput").addEventListener("keydown", e => { if (e.key === "Enter") loadManage(); });
+
+// ═════════════ 06 ACCESS ═════════════
+async function setRole(allowed) {
+  const a = $("aAddr").value.trim(); if (!ethers.isAddress(a)) return toast("Wallet ไม่ถูกต้อง", "err");
+  if (await send(allowed ? "ให้สิทธิ์ Issuer" : "ถอนสิทธิ์ Issuer", () => rw.setIssuer(a, allowed), () => rw.setIssuer.staticCall(a, allowed))) $("aCheck").click();
+}
+$("aGrant").onclick = () => setRole(true); $("aRevoke").onclick = () => setRole(false);
+$("aCheck").onclick = async () => {
+  const a = $("aAddr").value.trim(); if (!ethers.isAddress(a)) return toast("Wallet ไม่ถูกต้อง", "err");
+  const [adm, iss] = await Promise.all([ro.admin(), ro.isIssuer(a)]);
+  const role = adm.toLowerCase() === a.toLowerCase() ? ["ADMIN", "c-valid", "จัดการหลักสูตร สิทธิ์ และออกใบรับรองได้"] : iss ? ["ISSUER", "c-valid", "ออก/ระงับ/เพิกถอนใบรับรองได้"] : ["VERIFIER", "c-none", "ตรวจสอบได้อย่างเดียว ถ้าพยายามออกใบรับรอง contract จะปฏิเสธ (NotIssuer)"];
+  $("aResult").innerHTML = `<div class="row"><span class="chip ${role[1]}">${role[0]}</span><span class="mono">${short(a)}</span></div><p class="note" style="margin-top:10px">${role[2]}</p>`;
+};
+async function loadSystem() {
+  try {
+    const [adm, total, codes, b] = await Promise.all([ro.admin(), ro.totalCertificates(), ro.getCourseCodes(), reader.getBlockNumber()]);
+    $("sysInfo").innerHTML = `<dt>Contract</dt><dd class="mono"><a target="_blank" rel="noopener" href="${CFG.explorer}/address/${CFG.contract}">${CFG.contract}</a></dd>
+      <dt>Admin</dt><dd class="mono">${adm}</dd><dt>ใบรับรองทั้งหมด</dt><dd>${total} ใบ</dd><dt>หลักสูตร</dt><dd>${codes.length} หลักสูตร</dd>
+      <dt>Network</dt><dd>Ethereum Sepolia · block ${b}</dd><dt>ข้อมูลส่วนบุคคล</dt><dd>ไม่ถูกบันทึกบน chain (เก็บเฉพาะ hash ของไฟล์)</dd>`;
+  } catch (e) { $("sysInfo").innerHTML = `<dt>Error</dt><dd>${esc(errMsg(e))}</dd>`; }
+}
+
+// ═════════════ BOOT ═════════════
+(async () => {
+  $("iId").value = randId();
+  document.querySelectorAll(".lock").forEach(l => l.style.visibility = "visible");
+  await initReader();
+  if (!ro) { toast("เชื่อมต่อเครือข่าย Sepolia ไม่ได้ ลองรีเฟรชอีกครั้ง", "err", 15000); return; }
+  route();
+  connect(true);
+  loadFonts().then(schedulePreview);
+  setInterval(async () => { try { setNet(true, await reader.getBlockNumber()); } catch {} }, 15000);
+  const q = new URLSearchParams(location.search).get("verify");
+  if (q) { if (location.hash && location.hash !== "#verify") location.hash = "#verify"; runVerify(q); }
+})();
+</script>
+</body>
+</html>
