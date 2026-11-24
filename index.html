@@ -503,6 +503,7 @@ async function send(label, fn, staticFn, onStep) {
     const rc = await reader.waitForTransaction(tx.hash);
     t.remove();
     if (!rc || rc.status !== 1) throw new Error("ธุรกรรมล้มเหลว");
+    await sleep(2500); // ให้ public RPC node อื่นๆ sync ก่อนโหลดข้อมูลใหม่
     toast(`✓ ${label} สำเร็จ · ${txLink(tx.hash)}`, "ok", 9000);
     return { tx, rc };
   } catch (e) { toast(`${label} ไม่สำเร็จ: ${esc(errMsg(e))}`, "err", 9000); return null; }
@@ -542,6 +543,11 @@ function qrCanvas(text, size, dark = "#0c0e12", light = "#ffffff") {
   const d = document.createElement("div");
   new QRCode(d, { text, width: size, height: size, colorDark: dark, colorLight: light, correctLevel: QRCode.CorrectLevel.M });
   return d.querySelector("canvas");
+}
+// copy for DOM use (qrcode.js hides its own canvas after rendering an <img>)
+function qrEl(text, size) {
+  const src = qrCanvas(text, size), c = document.createElement("canvas");
+  c.width = src.width; c.height = src.height; c.getContext("2d").drawImage(src, 0, 0); return c;
 }
 let fontsReady = null;
 function loadFonts() {
@@ -632,7 +638,7 @@ function credCard(id, c, crs, opts = {}) {
       <div><span>File hash</span><span class="mono">${c.fileHash.slice(0, 18)}…</span></div>
     </div><div class="qrbox"></div></div></div>`;
   const fp = wrap.querySelector(".fp"); if (fp) fingerprint(fp.getContext("2d"), 150, 150, 140, id, "#c6ff3d");
-  wrap.querySelector(".qrbox").appendChild(qrCanvas(verifyUrl(id), 208));
+  wrap.querySelector(".qrbox").appendChild(qrEl(verifyUrl(id), 208));
   wrap.onclick = e => { if (!e.target.closest("a,button")) wrap.classList.toggle("flipped"); };
   const box = document.createElement("div"); box.appendChild(wrap);
   const hint = document.createElement("div"); hint.className = "flip-hint"; hint.textContent = "CLICK TO FLIP ↻"; box.appendChild(hint);
